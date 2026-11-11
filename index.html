@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1218">
+<title>Smart Light Pro - Cloud Dashboard</title>
+<style>
+:root{--bg:#0d1218;--panel:#151c26;--panel2:#1b2430;--line:#263140;--tx:#e8edf4;--mut:#8a99ab;--lamp:#f6b94c;--teal:#52d3c6;--bad:#ff6b5e;--ok:#5ed39b;color-scheme:dark}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 56px max(14px,env(safe-area-inset-left));font-variant-numeric:tabular-nums}
+.wrap{max-width:1020px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+.head-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h1{font-size:1.25rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.badge{font-size:.72rem;padding:2px 8px;border-radius:999px;background:rgba(82,211,198,.15);color:var(--teal);border:1px solid rgba(82,211,198,.35);font-weight:600}
+h2{font-size:.95rem;font-weight:650;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.mut{color:var(--mut)}.small{font-size:.8rem}
+.conn{display:flex;align-items:center;gap:8px;font-size:.84rem;color:var(--mut);background:var(--panel);padding:6px 12px;border-radius:999px;border:1px solid var(--line)}
+.conn i{width:9px;height:9px;border-radius:50%;background:var(--mut)}
+.conn.on i{background:var(--ok);box-shadow:0 0 0 4px rgba(94,211,155,.15)}
+.conn.off i{background:var(--bad)}
+.layout{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.span{grid-column:1/-1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.big{font-size:1.35rem;font-weight:700;line-height:1.2}
+.ppl{text-align:right}.ppl b{display:block;font-size:2rem;line-height:1;color:var(--teal)}
+.stage{position:relative;border-radius:10px;overflow:hidden;background:#0a0f14;border:1px solid var(--line)}
+.glow{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 100%,rgba(246,185,76,.6),rgba(246,185,76,.14) 55%,transparent 80%);opacity:.05;transition:opacity .8s ease}
+#radar{position:relative;display:block;width:100%;height:clamp(240px,58vw,370px)}
+#hist{display:block;width:100%;height:150px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel2);border-radius:10px;padding:10px 12px}
+.tile .k{font-size:.78rem;color:var(--mut)}
+.tile .v{font-size:1.55rem;font-weight:650;line-height:1.25}
+.tile .u{font-size:.82rem;color:var(--mut);margin-left:3px;font-weight:400}
+.bar{height:6px;background:var(--bg);border-radius:4px;overflow:hidden;margin-top:6px}
+.bar b{display:block;height:100%;width:0;background:var(--lamp);transition:width .3s}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--panel2);padding:4px;border-radius:10px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:disabled,input:disabled{opacity:.45;cursor:not-allowed}
+.seg button{border:0;background:transparent;padding:9px 4px;border-radius:7px;color:var(--mut);font-weight:600}
+.seg button[aria-pressed=true]{background:var(--lamp);color:#1b1405}
+.btn{border:1px solid var(--line);background:var(--panel2);padding:7px 13px;border-radius:8px;font-size:.86rem;font-weight:600}
+.btn:hover:not(:disabled){border-color:var(--mut)}
+.btn.pri{background:var(--lamp);color:#1b1405;border-color:var(--lamp)}
+.btn.warn{border-color:rgba(255,107,94,.5);color:var(--bad)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.row{margin-top:12px}
+.row label{display:flex;justify-content:space-between;gap:10px;font-size:.85rem;color:#cbd5e1;margin-bottom:4px}
+.row output{color:var(--lamp);font-weight:600}
+.row label.tog{justify-content:flex-start;align-items:center;gap:10px;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--lamp)}
+input[type=email],input[type=password]{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--tx);padding:9px 11px;border-radius:8px;font:inherit;margin-top:8px}
+details.card summary{cursor:pointer;font-weight:650;list-style:none}
+details.card summary::after{content:"+";float:right;color:var(--mut)}
+details[open].card summary::after{content:"\2212"}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border-radius:999px;font-size:.78rem;border:1px solid var(--line);background:var(--panel2);color:var(--mut)}
+.chip.ok{color:var(--ok)}.chip.bad{color:var(--bad);border-color:rgba(255,107,94,.4)}.chip.warn{color:var(--lamp)}
+.alert{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:8px;border:1px solid rgba(255,107,94,.45);background:rgba(255,107,94,.08)}
+.alert.warn{border-color:rgba(246,185,76,.45);background:rgba(246,185,76,.08)}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:.85rem;margin-top:12px}
+dl.kv dt{color:var(--mut)}dl.kv dd{text-align:right;word-break:break-all}
+ul.log{list-style:none;max-height:260px;overflow:auto;font-size:.84rem}
+ul.log li{display:grid;grid-template-columns:86px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+ul.log time{color:var(--mut)}
+ul.log li.l1 span{color:var(--lamp)}ul.log li.l2 span{color:var(--bad)}
+.lock-tag{font-size:.75rem;color:var(--lamp);font-weight:500}
+.modal-bg{position:fixed;inset:0;background:rgba(6,9,13,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;width:100%;max-width:360px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,20px);background:var(--panel2);border:1px solid var(--line);padding:9px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:60}
+#toast.show{opacity:1;transform:translate(-50%,0)}#toast.bad{border-color:var(--bad);color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>Smart Light <span class="badge">CLOUD v3.0</span></h1>
+    <p class="mut small">P Yogaraj (Karunya ECE) &bull; 24 GHz Radar &amp; Daylight Harvesting</p>
+  </div>
+  <div class="head-right">
+    <div class="conn" id="conn"><i></i><span id="connTxt">Connecting Cloud...</span></div>
+    <span class="chip" id="roleBadge">Guest View (Read-Only)</span>
+    <button class="btn pri" id="btnAuth">Admin Login</button>
+  </div>
+</header>
+
+<div id="alerts"></div>
+
+<div class="layout">
+  <section class="card span">
+    <div class="hero-top">
+      <div><div class="big" id="occTitle">Waiting for telemetry...</div><div class="mut" id="occSub">Connecting to Firebase Realtime Database</div></div>
+      <div class="ppl"><b id="ppl">0</b><span class="mut small">people</span></div>
+    </div>
+    <div class="stage"><div class="glow" id="glow"></div><canvas id="radar"></canvas></div>
+    <p class="mut small" style="margin-top:8px">Filled dots are people inside room limits. Dashed rings are outside limits (ignored). Background glow reflects live lamp brightness.</p>
+  </section>
+
+  <section class="card">
+    <h2><span>Lighting mode</span><span class="lock-tag" id="lockNote">Admin locked</span></h2>
+    <div class="seg" id="modeSeg">
+      <button data-m="0" aria-pressed="false" disabled>Auto</button>
+      <button data-m="1" aria-pressed="false" disabled>Manual</button>
+      <button data-m="2" aria-pressed="false" disabled>Off</button>
+    </div>
+    <div class="row" id="manualRow" hidden>
+      <label for="manual"><span>Manual brightness</span><output id="manualVal">60%</output></label>
+      <input type="range" id="manual" min="0" max="100" step="1" value="60" disabled>
+    </div>
+    <p class="mut small" id="modeHint" style="margin-top:10px"></p>
+  </section>
+
+  <section class="card">
+    <h2>Live readings</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Room light</div><div class="v"><span id="lux">0</span><span class="u">lx</span></div><div class="k" id="luxSub">Target 300 lx</div></div>
+      <div class="tile"><div class="k">Lamp brightness</div><div class="v"><span id="lvl">0</span><span class="u">%</span></div><div class="bar"><b id="lvlBar"></b></div></div>
+      <div class="tile"><div class="k">Power</div><div class="v"><span id="pwr">0.00</span><span class="u">W</span></div><div class="k" id="pwrSub">0 mA at 0.0 V</div></div>
+      <div class="tile"><div class="k">Lamp full power</div><div class="v"><span id="full">0.0</span><span class="u">W</span></div><div class="k">Learned from load</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Energy and savings</h2>
+    <div class="tiles">
+      <div class="tile"><div class="k">Used today</div><div class="v"><span id="eDay">0.0</span><span class="u">Wh</span></div></div>
+      <div class="tile"><div class="k">Saved vs always on</div><div class="v"><span id="saved">0</span><span class="u">%</span></div></div>
+      <div class="tile"><div class="k">Cost today</div><div class="v"><span class="u" style="margin:0 3px 0 0">&#8377;</span><span id="cost">0.00</span></div></div>
+      <div class="tile"><div class="k">Lifetime saved</div><div class="v"><span id="eLife">0.00</span><span class="u">kWh</span></div></div>
+    </div>
+    <p class="mut small" style="margin-top:8px" id="occToday"></p>
+  </section>
+
+  <section class="card">
+    <h2>Last 30 minutes</h2>
+    <canvas id="hist"></canvas>
+    <p class="mut small" id="histLegend" style="margin-top:6px"></p>
+  </section>
+
+  <div class="span" id="settings"></div>
+
+  <section class="card span">
+    <h2><span>Device &amp; Cloud Diagnostics</span></h2>
+    <div class="chips" id="chips"></div>
+    <dl class="kv">
+      <dt>Firmware</dt><dd id="s_fw">-</dd>
+      <dt>Uptime</dt><dd id="s_up">-</dd>
+      <dt>Last Cloud Sync</dt><dd id="s_clock">-</dd>
+      <dt>Local IP (LAN)</dt><dd id="s_ip">-</dd>
+      <dt>Fallback Hotspot IP</dt><dd id="s_ap">-</dd>
+      <dt>Wi-Fi Signal</dt><dd id="s_rssi">-</dd>
+      <dt>Free Heap Memory</dt><dd id="s_heap">-</dd>
+      <dt>ESP32 Loop Speed</dt><dd id="s_hz">-</dd>
+    </dl>
+    <div class="btns">
+      <button class="btn adm-btn" id="bIdentify" disabled>Blink the lamp</button>
+      <button class="btn adm-btn" id="bResetEnergy" disabled>Reset energy totals</button>
+      <button class="btn warn adm-btn" id="bReboot" disabled>Restart ESP32</button>
+    </div>
+  </section>
+
+  <section class="card span">
+    <h2>Recent events</h2>
+    <ul class="log" id="log"><li><time></time><span>Waiting for events...</span></li></ul>
+  </section>
+</div>
+</div>
+
+<!-- Admin Login Modal -->
+<div class="modal-bg" id="authModal" hidden>
+  <form class="modal" id="authForm">
+    <h2>Admin Sign In</h2>
+    <p class="mut small">Enter your Firebase Admin credentials to unlock lighting controls and tuning parameters.</p>
+    <input type="email" id="admEmail" placeholder="Admin Email" required autocomplete="username">
+    <input type="password" id="admPass" placeholder="Password" required autocomplete="current-password">
+    <div class="btns" style="justify-content:flex-end;margin-top:14px">
+      <button type="button" class="btn" id="btnCancelAuth">Cancel</button>
+      <button type="submit" class="btn pri">Unlock Controls</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAvOeIAGvE1GyyzZc0zfUcrjuEZlwi1WZA",
+  authDomain: "smartlight-pro.firebaseapp.com",
+  databaseURL: "https://smartlight-pro-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smartlight-pro",
+  storageBucket: "smartlight-pro.firebasestorage.app",
+  messagingSenderId: "639576208071",
+  appId: "1:639576208071:web:80fc96bb7cc1a72dc544e2",
+  measurementId: "G-JB0185R9Z1"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const $ = s => document.querySelector(s);
+const el = (t,c,x) => { const e=document.createElement(t); if(c)e.className=c; if(x!==undefined)e.textContent=x; return e; };
+const COL = { lamp:'#f6b94c', teal:'#52d3c6', mut:'#8a99ab', line:'#26313f' };
+
+let S = null, C = null, H = null, isAdmin = false;
+let lastEspTsMs = -1, lastRxWallMs = 0, toastT = 0, manT = 0;
+const trails = [[],[],[]];
+const inputs = {};
+
+const dur = s => s>=7200?(s/3600).toFixed(1)+' h':s>=120?Math.round(s/60)+' min':s+' s';
+const meters = v => (v/100).toFixed(2)+' m';
+const hour12 = h => ((h%12)||12)+(h<12?' am':' pm');
+
+const GROUPS = [
+  {t:'Room and presence',f:[
+    {k:'depth',l:'Room depth',min:100,max:600,step:25,fmt:meters},
+    {k:'width',l:'Half width, each side of the sensor',min:50,max:400,step:25,fmt:meters},
+    {k:'band',l:'Leaving zone along the edges (0 = off)',min:0,max:150,step:10,fmt:v=>v?v+' cm':'Off'},
+    {k:'exithold',l:'Keep lights on after someone leaves',min:3,max:120,step:1,fmt:dur},
+    {k:'stillhold',l:'Keep lights on for a resting person',min:10,max:1800,step:10,fmt:dur},
+    {k:'warndim',l:'Dim as a warning before switching off',min:0,max:30,step:1,fmt:v=>v?dur(v):'Off'}]},
+  {t:'Light behaviour',f:[
+    {k:'target',l:'Target room light',min:50,max:1000,step:25,fmt:v=>v+' lx'},
+    {k:'maxpct',l:'Maximum brightness',min:10,max:100,step:5,fmt:v=>v+'%'},
+    {k:'standby',l:'Glow when the room is empty',min:0,max:30,step:1,fmt:v=>v?v+'%':'Off'},
+    {k:'resp',l:'Reaction speed to daylight changes',min:25,max:300,step:25,fmt:v=>v+'%'}]},
+  {t:'Night mode',f:[
+    {k:'night',l:'Limit brightness at night',type:'toggle'},
+    {k:'nstart',l:'Starts at',min:0,max:23,step:1,fmt:hour12},
+    {k:'nend',l:'Ends at',min:0,max:23,step:1,fmt:hour12},
+    {k:'nmax',l:'Night maximum brightness',min:5,max:100,step:5,fmt:v=>v+'%'}]},
+  {t:'Protection and cost',f:[
+    {k:'oc',l:'Over-current trip limit',min:200,max:5000,step:100,fmt:v=>v+' mA'},
+    {k:'tariff',l:'Electricity price per kWh',min:0,max:30,step:0.5,fmt:v=>'\u20B9'+Number(v).toFixed(1)}]}
+];
+
+function toast(m, bad) {
+  const t = $('#toast');
+  t.textContent = m;
+  t.className = 'show' + (bad ? ' bad' : '');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { t.className = ''; }, 2200);
+}
+
+async function sendCloudCmd(payload, okMsg) {
+  if (!isAdmin) {
+    $('#authModal').hidden = false;
+    return toast('Admin login required', true);
+  }
+  try {
+    const data = Object.assign({ seq: Date.now() }, payload);
+    await update(ref(db, 'smartlight/cmd'), data);
+    if (okMsg) toast(okMsg);
+  } catch (e) {
+    toast('Cloud write blocked: ' + e.message, true);
+  }
+}
+
+function buildSettings() {
+  const host = $('#settings');
+  host.className = 'span layout';
+  GROUPS.forEach(g => {
+    const d = el('details', 'card');
+    d.appendChild(el('summary', '', g.t));
+    g.f.forEach(f => {
+      const row = el('div', 'row');
+      if (f.type === 'toggle') {
+        const lab = el('label', 'tog'), cb = el('input');
+        cb.type = 'checkbox'; cb.disabled = !isAdmin;
+        lab.append(cb, el('span', '', f.l));
+        row.appendChild(lab);
+        cb.addEventListener('change', () => sendCloudCmd({ [f.k]: cb.checked ? 1 : 0 }, 'Saved to cloud'));
+        inputs[f.k] = { el: cb, f };
+      } else {
+        const id = 'f_' + f.k, lab = el('label'), out = el('output');
+        lab.htmlFor = id;
+        lab.append(el('span', '', f.l), out);
+        const r = el('input');
+        r.type = 'range'; r.id = id; r.min = f.min; r.max = f.max; r.step = f.step; r.disabled = !isAdmin;
+        r.addEventListener('input', () => { out.textContent = f.fmt(+r.value); });
+        r.addEventListener('change', () => sendCloudCmd({ [f.k]: Number(r.value) }, 'Saved to cloud'));
+        row.append(lab, r);
+        inputs[f.k] = { el: r, out, f };
+      }
+      d.appendChild(row);
+    });
+    host.appendChild(d);
+  });
+}
+
+function updateAuthUI() {
+  $('#roleBadge').textContent = isAdmin ? 'Admin Mode (Full Control)' : 'Guest View (Read-Only)';
+  $('#roleBadge').className = 'chip ' + (isAdmin ? 'ok' : '');
+  $('#btnAuth').textContent = isAdmin ? 'Sign Out' : 'Admin Login';
+  $('#lockNote').textContent = isAdmin ? 'Unlocked' : 'Admin locked';
+  $('#lockNote').style.color = isAdmin ? 'var(--ok)' : 'var(--lamp)';
+  document.querySelectorAll('#modeSeg button, .adm-btn, #manual').forEach(b => b.disabled = !isAdmin);
+  for (const k in inputs) inputs[k].el.disabled = !isAdmin;
+}
+
+function syncCfg() {
+  if (!C) return;
+  for (const k in inputs) {
+    const i = inputs[k];
+    if (document.activeElement === i.el) continue;
+    if (i.f.type === 'toggle') i.el.checked = !!C[k];
+    else { i.el.value = C[k]; i.out.textContent = i.f.fmt(+C[k]); }
+  }
+  document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.m === C.mode)));
+  const m = $('#manual');
+  if (document.activeElement !== m) m.value = C.manual;
+  $('#manualVal').textContent = m.value + '%';
+  $('#manualRow').hidden = C.mode !== 1;
+  $('#modeHint').textContent = [
+    'Lights follow the room: on when someone is present, adjusted to hit your target light level.',
+    'You set a fixed brightness. Presence and daylight are ignored.',
+    'Lamp is off until you change the mode.'
+  ][C.mode] || '';
+}
+
+function chip(txt, cls) { return el('span', 'chip ' + cls, txt); }
+
+function render() {
+  if (!S) return;
+  const s = S;
+  let t, sub;
+  if (s.fs) { t = 'Radar not responding'; sub = 'Lights are held on for safety. Check radar wiring.'; }
+  else if (s.occ === 1) { t = 'Someone is here'; sub = s.ppl + (s.ppl === 1 ? ' person' : ' people') + ' inside room limits'; }
+  else if (s.occ === 2) { t = 'Resting person assumed'; sub = 'No motion seen. Lights switch off in ' + dur(s.hold); }
+  else if (s.occ === 3) { t = 'Someone just left'; sub = 'Lights switch off in ' + dur(s.hold); }
+  else { t = 'Room is empty'; sub = (C && C.standby > 0 && s.mode === 0) ? 'Standby glow is on' : 'Lights are off'; }
+  if (s.mode === 1) sub = 'Manual mode. ' + sub;
+  else if (s.mode === 2) sub = 'Lamp switched off. ' + sub;
+
+  $('#occTitle').textContent = t;
+  $('#occSub').textContent = sub;
+  $('#ppl').textContent = s.ppl;
+  $('#glow').style.opacity = (0.05 + 0.95 * s.lvl / 100).toFixed(2);
+
+  $('#lux').textContent = Number(s.lux || 0).toFixed(0);
+  $('#luxSub').textContent = (s.lOk ? 'Target ' : 'Sensor offline, target ') + Number(s.tgt || 300).toFixed(0) + ' lx';
+  $('#lvl').textContent = Number(s.lvl || 0).toFixed(0);
+  $('#lvlBar').style.width = Number(s.lvl || 0).toFixed(0) + '%';
+  $('#pwr').textContent = Number(s.p || 0).toFixed(2);
+  $('#pwrSub').textContent = Number(s.i || 0).toFixed(0) + ' mA at ' + Number(s.v || 0).toFixed(1) + ' V';
+  $('#full').textContent = Number(s.full || 0).toFixed(1);
+  $('#eDay').textContent = Number(s.eD || 0).toFixed(1);
+  $('#saved').textContent = Number(s.sv || 0).toFixed(0);
+  $('#cost').textContent = Number(s.cost || 0).toFixed(2);
+  $('#eLife').textContent = Number(s.svT || 0).toFixed(2);
+  $('#occToday').textContent = 'Room occupied ' + dur(s.occS || 0) + ' today, up to ' + (s.pmax || 0) + ((s.pmax === 1) ? ' person' : ' people') + ' at once.';
+
+  const A = $('#alerts'); A.textContent = '';
+  const add = (msg, cls, btn) => {
+    const d = el('div', 'alert ' + cls);
+    d.appendChild(el('span', '', msg));
+    if (btn && isAdmin) {
+      const b = el('button', 'btn', 'Reset Fault');
+      b.addEventListener('click', () => sendCloudCmd({ act: 2 }, 'Fault reset sent'));
+      d.appendChild(b);
+    }
+    A.appendChild(d);
+  };
+  if (s.f & 1) add('Over-current protection tripped and lamp is off. Check LED wiring.', '', true);
+  if (s.w & 1) add('Supply voltage is low (' + Number(s.v).toFixed(1) + ' V). Check power adapter.', 'warn');
+  if (s.w & 2) add('Supply voltage is high (' + Number(s.v).toFixed(1) + ' V). Check power adapter.', 'warn');
+  if (s.w & 4) add('Lamp draws no current. LED may be disconnected.', 'warn');
+  if (!s.lOk) add('Light sensor not responding. Auto mode is running open-loop.', 'warn');
+
+  const C2 = $('#chips'); C2.textContent = '';
+  C2.append(
+    chip('Radar ' + (s.rOk ? 'ok' : 'offline'), s.rOk ? 'ok' : 'bad'),
+    chip('Light sensor ' + (s.lOk ? 'ok' : 'offline'), s.lOk ? 'ok' : 'bad'),
+    chip('Power monitor ' + (s.iOk ? 'ok' : 'offline'), s.iOk ? 'ok' : 'bad'),
+    chip(s.sta ? 'ESP32 Online' : 'Hotspot mode', s.sta ? 'ok' : 'warn')
+  );
+  if (s.night) C2.appendChild(chip('Night mode active', 'warn'));
+
+  $('#s_fw').textContent = s.fw || '-';
+  $('#s_up').textContent = dur(s.up || 0);
+  $('#s_clock').textContent = lastRxWallMs ? new Date(lastRxWallMs).toLocaleTimeString() : '-';
+  $('#s_ip').textContent = s.ip || '-';
+  $('#s_ap').textContent = s.apip || '-';
+  $('#s_rssi').textContent = s.sta ? s.rssi + ' dBm' : '-';
+  $('#s_heap').textContent = ((s.heap || 0) / 1024).toFixed(0) + ' kB';
+  $('#s_hz').textContent = (s.hz || 0) + ' Hz';
+  drawRadar();
+}
+
+function prep(cv) {
+  const d = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  const W = Math.round(w * d), Hh = Math.round(h * d);
+  if (cv.width !== W || cv.height !== Hh) { cv.width = W; cv.height = Hh; }
+  const g = cv.getContext('2d');
+  g.setTransform(d, 0, 0, d, 0, 0);
+  return { g, w, h };
+}
+
+function drawRadar() {
+  const { g, w, h } = prep($('#radar'));
+  g.clearRect(0, 0, w, h);
+  const depth = (C && C.depth) || 350, half = (C && C.width) || 250, T = 1.75;
+  const sc = Math.min((h - 34) / depth, (w / 2 - 14) / half), ox = w / 2, oy = h - 18;
+  const X = x => ox + x * sc, Y = y => oy - y * sc;
+  g.save();
+  g.beginPath(); g.rect(X(-half), Y(depth), 2 * half * sc, depth * sc);
+  g.fillStyle = 'rgba(255,255,255,.03)'; g.fill();
+  g.strokeStyle = '#3a4c63'; g.lineWidth = 1.2; g.setLineDash([5, 4]); g.stroke(); g.setLineDash([]);
+  g.clip();
+  g.beginPath(); g.moveTo(ox, oy); g.lineTo(X(-depth * T), Y(depth)); g.lineTo(X(depth * T), Y(depth)); g.closePath();
+  g.fillStyle = 'rgba(82,211,198,.07)'; g.fill(); g.strokeStyle = 'rgba(82,211,198,.35)'; g.lineWidth = 1; g.stroke();
+  g.strokeStyle = 'rgba(138,153,171,.22)'; g.fillStyle = '#6f7e91'; g.font = '11px system-ui,sans-serif';
+  for (let r = 100; r <= depth; r += 100) {
+    g.beginPath(); g.arc(ox, oy, r * sc, -5 * Math.PI / 6, -Math.PI / 6); g.stroke();
+    g.fillText((r / 100) + ' m', ox + 5, oy - r * sc + 13);
+  }
+  g.restore();
+  g.beginPath(); g.arc(ox, oy, 6, Math.PI, 2 * Math.PI); g.fillStyle = COL.teal; g.fill();
+  const col = ['#52d3c6', '#a79bff', '#ff9fc0'];
+  trails.forEach((tr, i) => {
+    for (let k = 1; k < tr.length; k++) {
+      g.beginPath(); g.moveTo(X(tr[k - 1][0]), Y(tr[k - 1][1])); g.lineTo(X(tr[k][0]), Y(tr[k][1]));
+      g.strokeStyle = col[i]; g.globalAlpha = k / tr.length * .6; g.lineWidth = 2; g.stroke();
+    }
+    g.globalAlpha = 1;
+  });
+  (S && S.tg ? S.tg : []).forEach((t, i) => {
+    if (!t.a) return;
+    const x = X(t.x), y = Y(t.y);
+    if (t.a === 2) {
+      g.beginPath(); g.arc(x, y, 6, 0, 6.283); g.strokeStyle = COL.mut; g.lineWidth = 1.5;
+      g.setLineDash([3, 3]); g.stroke(); g.setLineDash([]); return;
+    }
+    g.beginPath(); g.arc(x, y, 12, 0, 6.283); g.fillStyle = col[i] + '33'; g.fill();
+    g.beginPath(); g.arc(x, y, 5, 0, 6.283); g.fillStyle = col[i]; g.fill();
+    g.fillStyle = '#e8edf4'; g.font = '12px system-ui,sans-serif';
+    const lbl = (Math.hypot(t.x, t.y) / 100).toFixed(1) + ' m';
+    g.fillText(lbl, x > w - 70 ? x - 52 : x + 11, y + 4);
+  });
+}
+
+function drawHist() {
+  const { g, w, h } = prep($('#hist'));
+  g.clearRect(0, 0, w, h);
+  if (!H || !H.lux || H.lux.length < 2) {
+    g.fillStyle = COL.mut; g.font = '13px system-ui,sans-serif';
+    g.fillText('Collecting cloud history (1 sample every 10s)...', 8, h / 2);
+    return;
+  }
+  const n = H.lux.length, pad = 10, px = i => 6 + (w - 12) * i / (n - 1);
+  const mx = a => Math.max(1, ...a), mL = mx(H.lux), mP = mx(H.pw || [1]);
+  const py = (v, m) => h - pad - (h - 2 * pad) * v / m;
+  g.fillStyle = 'rgba(94,211,155,.12)';
+  for (let i = 0; i < n; i++) if (H.ppl && H.ppl[i] > 0) g.fillRect(px(i) - (w / n) / 2, 0, w / n, h);
+  if (H.lvl) {
+    g.beginPath(); g.moveTo(px(0), h - pad);
+    for (let i = 0; i < n; i++) g.lineTo(px(i), py(H.lvl[i], 100));
+    g.lineTo(px(n - 1), h - pad); g.closePath();
+    g.fillStyle = 'rgba(246,185,76,.16)'; g.fill();
+  }
+  const line = (a, m, c) => {
+    if (!a) return;
+    g.beginPath();
+    for (let i = 0; i < n; i++) { const x = px(i), y = py(a[i], m); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.strokeStyle = c; g.lineWidth = 2; g.stroke();
+  };
+  line(H.lux, mL, COL.teal);
+  line(H.pw, mP, COL.lamp);
+  $('#histLegend').textContent = 'Teal: room light, peak ' + mL + ' lx. Amber: power, peak ' + (mP / 10).toFixed(1) + ' W. Shaded: lamp %.';
+}
+
+function renderLog(L) {
+  const ul = $('#log'); ul.textContent = '';
+  if (!L || !L.length) {
+    const li = el('li'); li.append(el('time'), el('span', '', 'No events recorded yet')); ul.appendChild(li); return;
+  }
+  L.forEach(e => {
+    const li = el('li', 'l' + e.lv);
+    const tm = e.ts ? new Date(e.ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'up ' + dur(e.up);
+    li.append(el('time', '', tm), el('span', '', e.m));
+    ul.appendChild(li);
+  });
+}
+
+function updateTrails() {
+  if (!S || !S.tg) return;
+  S.tg.forEach((t, i) => {
+    const tr = trails[i];
+    if (t.a === 1) { tr.push([t.x, t.y]); if (tr.length > 14) tr.shift(); }
+    else if (tr.length) tr.shift();
+  });
+}
+
+// Build UI and listeners
+buildSettings();
+
+onAuthStateChanged(auth, user => {
+  isAdmin = !!user;
+  updateAuthUI();
+});
+
+$('#btnAuth').addEventListener('click', async () => {
+  if (isAdmin) {
+    await signOut(auth);
+    toast('Signed out (Guest View)');
+  } else {
+    $('#authModal').hidden = false;
+    $('#admEmail').focus();
+  }
+});
+
+$('#btnCancelAuth').addEventListener('click', () => { $('#authModal').hidden = true; });
+
+$('#authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  try {
+    await signInWithEmailAndPassword(auth, $('#admEmail').value.trim(), $('#admPass').value);
+    $('#authModal').hidden = true;
+    $('#admPass').value = '';
+    toast('Admin unlocked!');
+  } catch (err) {
+    toast('Login failed: Invalid email or password', true);
+  }
+});
+
+document.querySelectorAll('#modeSeg button').forEach(b => {
+  b.addEventListener('click', () => sendCloudCmd({ mode: Number(b.dataset.m) }, 'Mode updated'));
+});
+
+$('#manual').addEventListener('input', e => {
+  $('#manualVal').textContent = e.target.value + '%';
+  clearTimeout(manT);
+  manT = setTimeout(() => sendCloudCmd({ manual: Number(e.target.value) }), 180);
+});
+
+$('#bIdentify').addEventListener('click', () => sendCloudCmd({ act: 1 }, 'Blinking lamp'));
+$('#bResetEnergy').addEventListener('click', () => {
+  if (confirm('Reset all energy totals to zero?')) sendCloudCmd({ act: 3 }, 'Energy reset sent');
+});
+$('#bReboot').addEventListener('click', () => {
+  if (confirm('Restart the ESP32 controller?')) sendCloudCmd({ act: 4 }, 'Restarting ESP32');
+});
+
+// Subscribe to Firebase Realtime Database
+onValue(ref(db, 'smartlight/live'), snap => {
+  const val = snap.val();
+  if (!val) return;
+  if (val.tsMs !== undefined && val.tsMs !== lastEspTsMs) {
+    lastEspTsMs = val.tsMs;
+    lastRxWallMs = Date.now();
+  }
+  S = val.state || S;
+  C = val.config || C;
+  updateTrails();
+  syncCfg();
+  render();
+  if (val.events) renderLog(val.events);
+});
+
+onValue(ref(db, 'smartlight/history'), snap => {
+  H = snap.val();
+  drawHist();
+});
+
+// Check ESP32 heartbeat every second
+setInterval(() => {
+  const online = lastRxWallMs > 0 && (Date.now() - lastRxWallMs) < 8000;
+  $('#conn').className = 'conn ' + (online ? 'on' : 'off');
+  $('#connTxt').textContent = online ? 'ESP32 Cloud Live' : (lastRxWallMs ? 'ESP32 Offline' : 'Waiting for ESP32...');
+}, 1000);
+
+window.addEventListener('resize', () => { drawRadar(); drawHist(); });
+</script>
+</body>
+</html>
