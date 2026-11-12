@@ -79,8 +79,8 @@ ul.log li.l1 span{color:var(--lamp)}ul.log li.l2 span{color:var(--bad)}
 <div class="wrap">
 <header>
   <div>
-    <h1>Smart Light <span class="badge">CLOUD v3.0</span></h1>
-    <p class="mut small">P Yogaraj (Karunya ECE) &bull; 24 GHz Radar &amp; Daylight Harvesting</p>
+    <h1>Smart Light <span class="badge">CLOUD v3.1</span></h1>
+    <p class="mut small">P Yogaraj (Karunya ECE) &bull; 24 GHz Kinematic Radar &amp; Daylight Harvesting</p>
   </div>
   <div class="head-right">
     <div class="conn" id="conn"><i></i><span id="connTxt">Connecting Cloud...</span></div>
@@ -98,7 +98,7 @@ ul.log li.l1 span{color:var(--lamp)}ul.log li.l2 span{color:var(--bad)}
       <div class="ppl"><b id="ppl">0</b><span class="mut small">people</span></div>
     </div>
     <div class="stage"><div class="glow" id="glow"></div><canvas id="radar"></canvas></div>
-    <p class="mut small" style="margin-top:8px">Filled dots are people inside room limits. Dashed rings are outside limits (ignored). Background glow reflects live lamp brightness.</p>
+    <p class="mut small" style="margin-top:8px">60-FPS interpolated radar view: filled dots are people inside room limits with live distance (m) and angle (&deg;). Dashed rings are outside room limits.</p>
   </section>
 
   <section class="card">
@@ -214,6 +214,7 @@ const COL = { lamp:'#f6b94c', teal:'#52d3c6', mut:'#8a99ab', line:'#26313f' };
 let S = null, C = null, H = null, isAdmin = false;
 let lastEspTsMs = -1, lastRxWallMs = 0, toastT = 0, manT = 0;
 const trails = [[],[],[]];
+const visTg  = [{x:0,y:0,a:0},{x:0,y:0,a:0},{x:0,y:0,a:0}];
 const inputs = {};
 
 const dur = s => s>=7200?(s/3600).toFixed(1)+' h':s>=120?Math.round(s/60)+' min':s+' s';
@@ -393,7 +394,6 @@ function render() {
   $('#s_rssi').textContent = s.sta ? s.rssi + ' dBm' : '-';
   $('#s_heap').textContent = ((s.heap || 0) / 1024).toFixed(0) + ' kB';
   $('#s_hz').textContent = (s.hz || 0) + ' Hz';
-  drawRadar();
 }
 
 function prep(cv) {
@@ -405,7 +405,7 @@ function prep(cv) {
   return { g, w, h };
 }
 
-function drawRadar() {
+function drawRadarFrame() {
   const { g, w, h } = prep($('#radar'));
   g.clearRect(0, 0, w, h);
   const depth = (C && C.depth) || 350, half = (C && C.width) || 250, T = 1.75;
@@ -429,23 +429,35 @@ function drawRadar() {
   trails.forEach((tr, i) => {
     for (let k = 1; k < tr.length; k++) {
       g.beginPath(); g.moveTo(X(tr[k - 1][0]), Y(tr[k - 1][1])); g.lineTo(X(tr[k][0]), Y(tr[k][1]));
-      g.strokeStyle = col[i]; g.globalAlpha = k / tr.length * .6; g.lineWidth = 2; g.stroke();
+      g.strokeStyle = col[i]; g.globalAlpha = k / tr.length * .55; g.lineWidth = 2; g.stroke();
     }
     g.globalAlpha = 1;
   });
+
+  // 60-FPS smooth interpolation toward latest target coordinates
   (S && S.tg ? S.tg : []).forEach((t, i) => {
-    if (!t.a) return;
-    const x = X(t.x), y = Y(t.y);
-    if (t.a === 2) {
+    const v = visTg[i];
+    if (!t.a) { v.a = 0; return; }
+    if (!v.a) { v.x = t.x; v.y = t.y; v.a = t.a; }
+    else {
+      v.x += (t.x - v.x) * 0.22;
+      v.y += (t.y - v.y) * 0.22;
+      v.a = t.a;
+    }
+    const x = X(v.x), y = Y(v.y);
+    if (v.a === 2) {
       g.beginPath(); g.arc(x, y, 6, 0, 6.283); g.strokeStyle = COL.mut; g.lineWidth = 1.5;
       g.setLineDash([3, 3]); g.stroke(); g.setLineDash([]); return;
     }
-    g.beginPath(); g.arc(x, y, 12, 0, 6.283); g.fillStyle = col[i] + '33'; g.fill();
-    g.beginPath(); g.arc(x, y, 5, 0, 6.283); g.fillStyle = col[i]; g.fill();
+    g.beginPath(); g.arc(x, y, 13, 0, 6.283); g.fillStyle = col[i] + '33'; g.fill();
+    g.beginPath(); g.arc(x, y, 5.5, 0, 6.283); g.fillStyle = col[i]; g.fill();
     g.fillStyle = '#e8edf4'; g.font = '12px system-ui,sans-serif';
-    const lbl = (Math.hypot(t.x, t.y) / 100).toFixed(1) + ' m';
-    g.fillText(lbl, x > w - 70 ? x - 52 : x + 11, y + 4);
+    const distM = (Math.hypot(v.x, v.y) / 100).toFixed(2);
+    const angDeg = Math.round(Math.atan2(v.x, v.y) * 57.2958);
+    const lbl = distM + 'm (' + (angDeg > 0 ? '+' : '') + angDeg + '\u00B0)';
+    g.fillText(lbl, x > w - 105 ? x - 92 : x + 12, y + 4);
   });
+  requestAnimationFrame(drawRadarFrame);
 }
 
 function drawHist() {
@@ -495,13 +507,13 @@ function updateTrails() {
   if (!S || !S.tg) return;
   S.tg.forEach((t, i) => {
     const tr = trails[i];
-    if (t.a === 1) { tr.push([t.x, t.y]); if (tr.length > 14) tr.shift(); }
+    if (t.a === 1) { tr.push([t.x, t.y]); if (tr.length > 16) tr.shift(); }
     else if (tr.length) tr.shift();
   });
 }
 
-// Build UI and listeners
 buildSettings();
+requestAnimationFrame(drawRadarFrame);
 
 onAuthStateChanged(auth, user => {
   isAdmin = !!user;
@@ -550,7 +562,6 @@ $('#bReboot').addEventListener('click', () => {
   if (confirm('Restart the ESP32 controller?')) sendCloudCmd({ act: 4 }, 'Restarting ESP32');
 });
 
-// Subscribe to Firebase Realtime Database
 onValue(ref(db, 'smartlight/live'), snap => {
   const val = snap.val();
   if (!val) return;
@@ -571,14 +582,13 @@ onValue(ref(db, 'smartlight/history'), snap => {
   drawHist();
 });
 
-// Check ESP32 heartbeat every second
 setInterval(() => {
   const online = lastRxWallMs > 0 && (Date.now() - lastRxWallMs) < 8000;
   $('#conn').className = 'conn ' + (online ? 'on' : 'off');
   $('#connTxt').textContent = online ? 'ESP32 Cloud Live' : (lastRxWallMs ? 'ESP32 Offline' : 'Waiting for ESP32...');
 }, 1000);
 
-window.addEventListener('resize', () => { drawRadar(); drawHist(); });
+window.addEventListener('resize', () => { drawHist(); });
 </script>
 </body>
 </html>
